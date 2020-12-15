@@ -15,3 +15,4 @@ services:
     image: php:7.2-fpm
     volumes:
       - .:/var/www/html
+      - ./app/php.ini:/usr/local/etc/php/php.ini
