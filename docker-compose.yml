@@ -4,6 +4,14 @@ services:
   web:
     image: nginx
     volumes:
-      - .:/usr/share/nginx/html
+      - ./misc/nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf
+      - .:/var/www/html
     ports: 
       - '8080:80'
+    depends_on: 
+      - app
+
+  app:
+    image: php:7.2-fpm
+    volumes:
+      - .:/var/www/html
