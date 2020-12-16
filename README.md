@@ -50,6 +50,16 @@ services:
 ```
 
 このファイルは、プロジェクトルートに配置します。
+
+```
+.
+├── README.md
+├── docker-compose.yml
+└── index.html
+```
+
+⬆️ ここまでのプロジェクト構成はこんな感じです。
+
 プロジェクトルートを nginx のドキュメントルートである `/usr/share/nginx/html` にマウントすることで
 url のルートにアクセスした時に、この html が表示されるようになります。
 
@@ -72,7 +82,7 @@ docker-compose down
 Then access to http://localhost:8080 
 
 
-#### TIPS 🖇: use norimal docker
+### TIPS 🖇: use norimal docker
 
 なお、ここまででやっていることは普通の `docker` コマンドでできます。
 やっていることは以下と変わりません。
@@ -88,6 +98,7 @@ docker run -d --rm \
 # stop container (and automaticaly remove)
 docker stop mynginx 
 ```
+
 
 ## サービスに php アプリケーションを追加
 
@@ -189,7 +200,7 @@ services:
 ```
 
 
-* 最終的なプロジェクト構成
+* ここまでのプロジェクト構成を再び晒しておきます ⬇️
 
 ```
 .
@@ -202,6 +213,8 @@ services:
 └── misc/nginx/conf.d
     └── default.conf
 ```
+
+
 
 ## DB (MySQL) の設定と接続
 
@@ -230,7 +243,7 @@ services:
     image: nginx
     volumes:
       - ./misc/nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf
-      - .:/var/www/html
+      - ./src:/var/www/html
     ports: 
       - '8080:80'
     depends_on: 
@@ -240,23 +253,26 @@ services:
     build: ./services/app
     volumes:
       - ./services/app/php.ini:/usr/local/etc/php/php.ini
-      - .:/var/www/html
+      - ./src:/var/www/html
     depends_on:
       - db
 
   db:
     image: mysql:5.7
-    environment: 
+    environment:
       - MYSQL_ROOT_PASSWORD
       - MYSQL_DATABASE
       - MYSQL_USER
       - MYSQL_PASSWORD
-    ports: 
+    ports:
       - '3306:3306'
-    volumes: 
+    volumes:
       - ./services/db/data:/var/lib/mysql
       - ./services/db/my.cnf:/etc/mysql/conf.d/my.cnf
+
 ```
+
+細かい変更ですが、ソースファイルが増えてきたので `src/` というディレクトリを作ってまとめてみました。(好みだと思います...)
 
 `db` の `environment` に関してですが、DBのコンテナの作成時に、
 サービスで使うユーザを作ったり、そのパスワードを設定したり、アプリケーション用のデータベースを作ったりするための定義部分です。
@@ -332,6 +348,29 @@ DB に接続し、MySQL のバージョンを求めて、画面に表示する�
 
 access to http://localhost:8080/connect.php
 
+ここで再び、ここまでのプロジェクト構成です ⬇️
+
+```
+.
+├── README.md
+├── docker-compose.override.sample.yml
+├── docker-compose.override.yml
+├── docker-compose.yml
+├── misc/nginx/conf.d/
+│   └── default.conf
+├── services/
+│   ├── app/
+│   │   ├── Dockerfile
+│   │   └── php.ini
+│   └── db/
+│       ├── data
+│       ├── init.d
+│       └── my.cnf
+└── src/
+    ├── connect.php
+    ├── index.html
+    └── info.php
+```
 
 さて、これで webサーバ、phpアプリケーション、DB を持つサービスの環境が整いました！
 
