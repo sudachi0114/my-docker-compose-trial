@@ -10,7 +10,7 @@
         $stmt = $db->prepare($insert_sql);
         $stmt->execute();
 
-        $select_sql = "SELECT * FROM counter ORDER BY id DESC limit 1";
+        $select_sql = 'SELECT * FROM counter ORDER BY id DESC limit 1';
         $stmt = $db->prepare($select_sql);
         $stmt->execute();
         $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
