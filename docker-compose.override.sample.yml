@@ -1,0 +1,11 @@
+version: '3'
+
+services: 
+  db:
+    environment: 
+      - MYSQL_ROOT_PASSWORD=toor
+      - MYSQL_DATABASE=test_db
+
+      # FIXME: fix below 2 environment variables for your environment
+      - MYSQL_USER=sudachi
+      - MYSQL_PASSWORD=password
