@@ -375,9 +375,149 @@ access to http://localhost:8080/connect.php
 さて、これで webサーバ、phpアプリケーション、DB を持つサービスの環境が整いました！
 
 
+### せっかくなので php アプリケーションをもう少しいじってみる
+
+もう少し実践的なアプリケーションを配置してみます。
+
+ソースファイルは `connect.php` をいじることにします。
+
+このアプリケーションにアクセスするたびに足跡をとって、
+何回アクセスされたかという「カウンター」的な役割をするものを実装してみます。
+
+まずは、足跡を保存するためのテーブルをデータベースに定義します。
+
+```services/db/initdb.d/01_init.sql
+DROP DATABASE IF EXISTS test_db;
+CREATE DATABASE test_db;
+USE test_db;
+
+DROP TABLE IF EXISTS counter;
+
+CREATE TABLE counter (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  created_at TIMESTAMP
+);
+```
+
+これもローカルにファイルを作成し、コンテナ内のディレクトリにマウントする形式を取ります。
+コンテナ内の `/docker-entrypoint-initdb.d` というディレクトリに配置します。
+すると、 `*.sql | *.sh | *.sql.gz` のいずれかの拡張子を持つファイルが起動時に実行されるようです。 
+
+```docker-compose.yml
+version: '3'
+
+services: 
+  web:
+    image: nginx
+    volumes:
+      - ./misc/nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf
+      - ./src:/var/www/html
+    ports: 
+      - '8080:80'
+    depends_on: 
+      - app
+
+  app:
+    build: ./services/app
+    volumes:
+      - ./services/app/php.ini:/usr/local/etc/php/php.ini
+      - ./src:/var/www/html
+    depends_on:
+      - db
+
+  db:
+    image: mysql:5.7
+    environment:
+      - MYSQL_ROOT_PASSWORD
+      - MYSQL_DATABASE
+      - MYSQL_USER
+      - MYSQL_PASSWORD
+    ports:
+      - '3306:3306'
+    volumes:
+      - ./services/db/data:/var/lib/mysql
+      - ./services/db/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./services/db/initdb.d:/docker-entrypoint-initdb.d
+```
+
+さて http://localhost:8080/connect.php にアクセスされたら、
+`db` サービスの、`test_db` の `counter` というテーブルにバリューをインサートしたいですね。
+
+そして、その最後の1レコードを画面に表示することで「何回アクセスされたか」というカウンターが実現できそうです。
+
+```connect.php
+<?php
+    ini_set('display_errors', 1);
+    date_default_timezone_set('Asia/Tokyo');
+
+    try {
+        $dsn = 'mysql:host=db;dbname=test_db;';
+        $db = new PDO($dsn, 'sudachi', 'password');  // FIXME:
+
+        $insert_sql = 'INSERT INTO counter () VALUE ()';
+        $stmt = $db->prepare($insert_sql);
+        $stmt->execute();
+
+        $select_sql = "SELECT * FROM counter ORDER BY id DESC limit 1";
+        $stmt = $db->prepare($select_sql);
+        $stmt->execute();
+        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // var_dump($result);
+        print_r($result);
+    } catch (PDOExeption $e) {
+        echo $e->getMessage();
+        exit;
+    }
+?>
+```
+
+⬆️ できあがったものがこちらになります。
+
+
+* **TIPS 🖇 :** データベースのデータのリセット
+
+不可逆な変更なので注意
+
+```db-reset.sh
+# WARNING!!: DB を初期化します
+docker-compose down
+rm -r ./services/db/data/*
+
+# .gitignore まで削除されてしまうので、それ対策
+touch ./services/db/data/.gitignore
+echo '*' >> ./services/db/data/.gitignore
+```
+
+* 更新後のプロジェクト構成です ⬇️
+
+```
+.
+├── README.md
+├── db-reset.sh
+├── docker-compose.override.sample.yml
+├── docker-compose.override.yml
+├── docker-compose.yml
+├── miscn/nginx/conf.d/
+│       └── default.conf
+├── services
+│   ├── app
+│   │   ├── Dockerfile
+│   │   └── php.ini
+│   └── db
+│       ├── data/.gitignore
+│       ├── initdb.d
+│       └── my.cnf
+└── src
+    ├── connect.php
+    ├── index.html
+    └── info.php
+```
+
 ## Links
 
 * [Docker ComposeでNginxとphpを連携する](https://zukucode.com/2019/06/docker-compose-nginx-php.html)
 * [Docker Composeでphpでmysqlにアクセスする](https://zukucode.com/2019/06/docker-compose-mysql.html)
 * [docker-composeでbuildができなくなる問題の解決策メモ (credHelpersのディレクティブ由来の不具合)](https://marsquai.com/7d9c0dd5-2fe1-4725-8cca-e766b4682aea/da1900c3-255d-489a-9201-f02a639fe4a5/71e724cd-212c-4301-b6d9-378312479f34/)
 * [docker-compose.override.yml](https://docs.docker.jp/compose/extends.html)
+* [Docker MySQLコンテナ起動時に初期データを投入する](https://qiita.com/NagaokaKenichi/items/ae037963b33a85df33f5)
