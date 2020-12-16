@@ -30,6 +30,7 @@ services:
 * 表示テスト用に html を用意しておきます。
 
 ローカル (ホスト? コンテナではなく、手元にある本体のPCという意味) にファイルを作成し、コンテナ作成時にマウントします。
+
 基本 docker 関係で使うソースファイルはこの手法で利用することが多い、という印象です。
 このプロジェクトでも、例にもれることなく、この方法を後で多用します。
 
@@ -116,6 +117,7 @@ services:
 
 * 次に、php アプリケーションを用意します。
 「利用している php のバージョンを表示する」という簡単なプログラム (?) です。
+`info.php` という名前で用意してみました。
 
 ```info.php
 <?php phpinfo(); ?>
@@ -124,7 +126,7 @@ services:
 
 * 最後に nginx の設定を書きます。
 
-これを書かないと、localhost:8080/info.php にアクセスしたときに
+これを書かないと、http://localhost:8080/info.php にアクセスしたときに
 php ファイルがブラウザで表示されず、ダウンロードされてしまいます。
 
 ```default.conf
@@ -155,6 +157,16 @@ nginx のドキュメントルートも `/usr/share/nginx/html` から `/var/www
 
 php のタイムゾーンや、文字コードに関する設定のファイルを記述します。
 
+```php.ini
+[Date]
+date.timezone = "Asia/Tokyo"
+[mbstring]
+mbstring.internal_encoding = "UTF-8"
+mbstring.language = "Japanese"
+```
+
+この設定ファイルもコンテナにマウントするように `docker-compose.yml` を編集します。
+
 ```docker-compose.yml
 version: '3'
 
@@ -176,13 +188,6 @@ services:
       - ./app/php.ini:/usr/local/etc/php/php.ini
 ```
 
-```php.ini
-[Date]
-date.timezone = "Asia/Tokyo"
-[mbstring]
-mbstring.internal_encoding = "UTF-8"
-mbstring.language = "Japanese"
-```
 
 * 最終的なプロジェクト構成
 
@@ -205,7 +210,7 @@ docker-compose でアプリケーションとDBを立てて、それらを接続
 ```
 # イメージ図
 
-[user] :8080 ---> :80 [web: nginx] <--- [app: php application] :3306 ---> :3306 [db: MySQL]
+[user] :8080 <---> :80 [web: nginx] <---> [app: php application] :3306 <---> :3306 [db: MySQL]
 
 ```
 
@@ -213,6 +218,7 @@ docker-compose でアプリケーションとDBを立てて、それらを接続
 * まずは DB (今回は `MySQL` を使います ) をサービスとして定義します。
 
 サービス名前は素直に `db` にしました。
+
 設定ファイルが増えてきたので `services` というディレクトリを作って、その下にまとめましたが、
 `services` というディレクトリ名である必要はなく、~~私のネーミングセンスのなさ~~ 見やすさのための命名です。
 
@@ -256,7 +262,7 @@ services:
 サービスで使うユーザを作ったり、そのパスワードを設定したり、アプリケーション用のデータベースを作ったりするための定義部分です。
 
 環境変数として持たせる形でセットしますが、
-安全面などを考え `docker-compose.override.yml` というファイルを作り、そこに個人の設定を記入すると良いと思います。
+安全面や利便性などを考え `docker-compose.override.yml` というファイルを作り、そこに個人の設定を記入すると良いと思います。
 
 ```docker-compose.override.yml
 version: '3'
@@ -273,6 +279,14 @@ services:
 
 今回は `docker-compose.override.sample.yml` に例を作りました。
 以下のようにすると使えると思います。
+
+```sh
+cp -p docker-compose.override.sample.yml docker-compose.override.yml
+
+docker-compose up -d
+```
+
+
 その名の通り、`docker-compose.yml` に `docker-compose.override.yml` の内容が上書きされる形で設定されます。
 
 オーバーライドする設定ファイルを使うことで、各user毎に設定内容を変えることができるというメリットがあります。
@@ -280,12 +294,6 @@ services:
 
 逆に、`override.yml` の内容を自分の環境に揃えることを他の開発者の方々にきちんと共有する必要があるということにも注意したいですね。
 
-
-```sh
-cp -p docker-compose.override.sample.yml docker-compose.override.yml
-
-docker-compose up -d
-```
 
 さて、MySQL に関しては、最後に設定ファイルを追加して定義を終了します。
 
@@ -333,3 +341,4 @@ access to http://localhost:8080/connect.php
 * [Docker ComposeでNginxとphpを連携する](https://zukucode.com/2019/06/docker-compose-nginx-php.html)
 * [Docker Composeでphpでmysqlにアクセスする](https://zukucode.com/2019/06/docker-compose-mysql.html)
 * [docker-composeでbuildができなくなる問題の解決策メモ (credHelpersのディレクティブ由来の不具合)](https://marsquai.com/7d9c0dd5-2fe1-4725-8cca-e766b4682aea/da1900c3-255d-489a-9201-f02a639fe4a5/71e724cd-212c-4301-b6d9-378312479f34/)
+* [docker-compose.override.yml](https://docs.docker.jp/compose/extends.html)
